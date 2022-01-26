@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace CompareExcel;
 
-class Program
+public class Program
 {
     /// <summary>
     /// Директория извлекаемых таблиц
@@ -22,7 +22,9 @@ class Program
 
         using (ExcelUse ex = new())
         {
-            DataTable dt = ex.ReadFile($@"{directory}\piev_65011250351440.xlsx");
+            DataTable dt = ex.ReadFile($@"{directory}\piev_65011250350281.xlsx");
+            //DataTable dt = new DataTable() { };
+            Console.WriteLine($"NameDT: {dt.TableName}, Rows.Count:{dt.Rows.Count}");
             ex.Convert(dt);
             ex.SaveAs(@"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Full", GetFileName(directory));
         }

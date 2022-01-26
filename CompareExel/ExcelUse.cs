@@ -4,6 +4,12 @@ namespace CompareExcel;
 
 class ExcelUse : IDisposable
 {
+    public delegate void ErrorQuit();
+    /// <summary>
+    /// Событие на случай ошибки
+    /// </summary>
+    public event ErrorQuit? Turn_nextEV;
+
     private readonly Excel.Application app;
     /// <summary>
     /// Рабочая книга
@@ -13,7 +19,10 @@ class ExcelUse : IDisposable
     /// Страница книги Excel
     /// </summary>
     private Excel.Worksheet Sheet;
-    private readonly string SheetName = "Лист1";
+    /// <summary>
+    /// Имя листа в итоговом файле
+    /// </summary>
+    private readonly string SheetName = "Summ";
 
     /// <summary>
     /// Путь к файлу
@@ -26,16 +35,11 @@ class ExcelUse : IDisposable
         {
             Visible = false
         };
-    }
-
-    /// <summary>
-    /// Инициализация приложения
-    /// </summary>
-    /// <param name="SheetName">Имя листа</param>
-    public ExcelUse(string SheetName)
-    {
-        app = new Excel.Application();
-        this.SheetName = SheetName;
+        if (app == null)
+        {
+            Turn_nextEV?.Invoke();
+            throw new Exception("Приложение Excel не запущенно, убедитесь что пакет office установлен");
+        }
     }
 
     /// <summary>
@@ -52,19 +56,36 @@ class ExcelUse : IDisposable
             this.Workbook = app.Workbooks.Open(filePatch);
             this.filePatch = filePatch;
 
-            this.Sheet = Workbook.Worksheets[SheetName];
-
-            // TODO: Создать нормальное формирование таблицы как в методе Convert
-            foreach (System.Data.DataRow row in Sheet.Rows)
+            this.Sheet = (Excel.Worksheet)Workbook.Worksheets[0];
+            if (this.Sheet == null)
             {
-                DT.Rows.Add(row);
+                Turn_nextEV?.Invoke();
+                throw new Exception("Листа не существует, убедитесь в правивильности имени");
             }
 
+            var rangeExcel = Sheet.UsedRange;
+            Console.WriteLine((rangeExcel.Cells[2, 'J'] as Excel.Range).Text.ToString());
+            Console.WriteLine(Sheet.Cells[2, 2]);
+
+            // Именование колонок
+            foreach (Excel.Range col in Sheet.Columns)
+            {
+                Console.WriteLine($"Col.name: {col[1]}");
+                DT.Columns.Add(col.Name, col.GetType());
+            }
+            /*
+            // Остальная информация
+            foreach(Excel.Range row in Sheet.Rows)
+            {
+                Console.WriteLine($"row.Name = {row.Name}\nrow.count = {(row as System.Data.DataRow).ItemArray.Length}");
+                DT.Rows.Add(row as System.Data.DataRow);
+            }
+            */
             return DT;
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine($"Ошибка считывания: {ex}");
             this.filePatch = null;
 
             return null;
@@ -102,6 +123,7 @@ class ExcelUse : IDisposable
     {
         try
         {
+            this.Sheet.Name = "SummEx";
             // Именование колонок
             char _excelHeader = 'A';
             foreach (System.Data.DataColumn column in DT.Columns)
@@ -123,7 +145,7 @@ class ExcelUse : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine($"Ошибка конвертирования: {ex.Message}");
         }
     }
 
