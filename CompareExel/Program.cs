@@ -51,8 +51,8 @@ public class Program
         try
         {
             List<DataTable> list = new();
+            Console.WriteLine($"Сканирование директории: {dirName.Substring(0, dirName.LastIndexOf(@"\"))}");
             string[] filesDir = Directory.GetFiles(dirName, "*.xlsx"); // Сканирует файлы формата Excel
-
             foreach (string filePatch in filesDir)
             {
                 using ExcelUse excelApp = new();
@@ -71,13 +71,13 @@ public class Program
     private static string GetFileName(string DirFolder) => GetFileName(DirFolder, DateTime.Now.Month, DateTime.Now.Year);
 
     /// <summary>
-    /// Создание имени файла
+    /// Создание имени файла с установкой месяца и года
     /// </summary>
     /// <param name="DirFolder">Директория извлекаемых таблиц</param>
     /// <param name="mounth">Месяц</param>
     /// <param name="year">Год</param>
     /// <returns></returns>
-    private static string GetFileName(string DirFolder, int mounth, int year)
+    internal static string GetFileName(string DirFolder, int mounth, int year)
     {
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
         return $"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounth}_{year}";

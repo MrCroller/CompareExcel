@@ -52,9 +52,10 @@ class ExcelUse : IDisposable
     {
         try
         {
-            Console.WriteLine($"\nReadFile {filePatch} START");
-            for (int i = 0; i < 70; i++)
-                Console.Write("#");
+            Console.WriteLine($"\nReadFile {filePatch.Split(@"\")[^1]}");
+            for (int i = 0; i < 30; i++)
+                Console.Write("###");
+            Console.WriteLine("\nSTART READ");
 
             System.Data.DataTable DT = new();
 
@@ -77,7 +78,7 @@ class ExcelUse : IDisposable
             int rowsCount = useRange.Rows.Count;
             int columnsCount = useRange.Columns.Count;
 
-            Console.WriteLine($"\nrowsCount: {rowsCount}\ncolumnsCount: {columnsCount}");
+            Console.WriteLine($"rowsCount: {rowsCount}\ncolumnsCount: {columnsCount}");
 
             // Именование колонок
             for (int i = 1; i <= columnsCount; i++)
@@ -99,6 +100,7 @@ class ExcelUse : IDisposable
                 DT.Rows.Add(listRow.ToArray()); // Добавление новой строки в DT
             }
 
+            Console.WriteLine("FINISH READ");
             return DT;
         }
         catch (Exception ex)
@@ -179,6 +181,7 @@ class ExcelUse : IDisposable
         {
             Workbook.Close();
             app.Quit();
+            Console.WriteLine("\nDispose. Очистка процессов");
         }
         catch (Exception ex) { Console.WriteLine(ex.Message); }
     }
