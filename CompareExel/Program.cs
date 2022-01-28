@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace CompareExcel;
@@ -18,15 +19,22 @@ public class Program
         Stopwatch timer = new();
         timer.Start(); // Таймер
 
-        string[] filesDir = Directory.GetFiles(directory, "*.xlsx"); // Сканирует файлы формата Excel
-
-        using (ExcelUse ex = new())
+        Dictionary<int, DataTable> dictDT = new();
+        List<DataTable> allDT = ReadRange(directory);
+        foreach (DataTable dt in allDT)
         {
-            DataTable dt = ex.ReadFile($@"{directory}\piev_65011250350281.xlsx");
-            //DataTable dt = new DataTable() { };
-            Console.WriteLine($"NameDT: {dt.TableName}, Rows.Count:{dt.Rows.Count}");
-            ex.Convert(dt);
-            ex.SaveAs(@"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Full", GetFileName(directory));
+            // Взятие со строки даты документа {DocDate} месяц и год формат: {042022}
+            int month = Convert.ToInt32(dt.Rows[2]["ns1:DocDate"].ToString().Substring(2).Replace(".", ""));
+
+            if (dictDT.Keys.Contains(month))
+            {
+                dictDT[month].Merge(dt);
+            }
+            else
+            {
+                dictDT.Add(month, dt);
+            }
+            // TODO: Напиши конвертирования по словарю, и сохранение
         }
 
         timer.Stop();
@@ -40,19 +48,19 @@ public class Program
     /// <returns></returns>
     static List<DataTable> ReadRange(string dirName)
     {
-        string[] filesDir = Directory.GetFiles(dirName, "*.xlsx"); // Сканирует файлы формата Excel
-
-        foreach (string filePatch in filesDir)
+        try
         {
-            try
+            List<DataTable> list = new();
+            string[] filesDir = Directory.GetFiles(dirName, "*.xlsx"); // Сканирует файлы формата Excel
+
+            foreach (string filePatch in filesDir)
             {
                 using ExcelUse excelApp = new();
-                excelApp.ReadFile(filePatch);
+                list.Add(excelApp.ReadFile(filePatch));
             }
-            catch (Exception ex) { Console.WriteLine(ex.Message); }
+            return list;
         }
-
-        return null;
+        catch (Exception ex) { Console.WriteLine(ex.Message); return null; }
     }
 
     /// <summary>

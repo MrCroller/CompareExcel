@@ -1,4 +1,5 @@
-﻿using Excel = Microsoft.Office.Interop.Excel;
+﻿using System.Collections.Generic;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace CompareExcel;
 
@@ -47,40 +48,57 @@ class ExcelUse : IDisposable
     /// </summary>
     /// <param name="filePatch"></param>
     /// <returns></returns>
-    public System.Data.DataTable? ReadFile(string filePatch)
+    public System.Data.DataTable ReadFile(string filePatch)
     {
         try
         {
+            Console.WriteLine($"\nReadFile {filePatch} START");
+            for (int i = 0; i < 70; i++)
+                Console.Write("#");
+
             System.Data.DataTable DT = new();
 
             this.Workbook = app.Workbooks.Open(filePatch);
             this.filePatch = filePatch;
 
-            this.Sheet = (Excel.Worksheet)Workbook.Worksheets[0];
-            if (this.Sheet == null)
+            Sheet = (Excel.Worksheet)Workbook.Worksheets[1];
+            if (Sheet == null)
             {
                 Turn_nextEV?.Invoke();
                 throw new Exception("Листа не существует, убедитесь в правивильности имени");
             }
+            //Sheet.Activate();
 
-            var rangeExcel = Sheet.UsedRange;
-            Console.WriteLine((rangeExcel.Cells[2, 'J'] as Excel.Range).Text.ToString());
-            Console.WriteLine(Sheet.Cells[2, 2]);
+            #region Приведения к Excel.Range возможно пригодится на более ранних версиях языка
+            //Console.WriteLine((Sheet.UsedRange.Cells[1, 1] as Excel.Range).Text); 
+            #endregion
+
+            var useRange = Sheet.UsedRange;
+            int rowsCount = useRange.Rows.Count;
+            int columnsCount = useRange.Columns.Count;
+
+            Console.WriteLine($"\nrowsCount: {rowsCount}\ncolumnsCount: {columnsCount}");
 
             // Именование колонок
-            foreach (Excel.Range col in Sheet.Columns)
+            for (int i = 1; i <= columnsCount; i++)
             {
-                Console.WriteLine($"Col.name: {col[1]}");
-                DT.Columns.Add(col.Name, col.GetType());
+                dynamic columnName = useRange.Cells[1, i];
+                DT.Columns.Add(columnName.Text, columnName.GetType());
             }
-            /*
-            // Остальная информация
-            foreach(Excel.Range row in Sheet.Rows)
+            // Получение строк
+            List<object> listRow = new(); // Лист строки
+            for (int i = 2; i <= rowsCount; i++)
             {
-                Console.WriteLine($"row.Name = {row.Name}\nrow.count = {(row as System.Data.DataRow).ItemArray.Length}");
-                DT.Rows.Add(row as System.Data.DataRow);
+                //Console.WriteLine($"new row [{i-1}]");
+                listRow.Clear();
+                for (int j = 1; j <= columnsCount; j++)
+                {
+                    //Console.WriteLine($"[{i-1},{j}]Text: {useRange.Cells[i, j].Text}");
+                    listRow.Add(useRange.Cells[i, j]); // Заполнение листа строки
+                }
+                DT.Rows.Add(listRow.ToArray()); // Добавление новой строки в DT
             }
-            */
+
             return DT;
         }
         catch (Exception ex)
@@ -89,6 +107,43 @@ class ExcelUse : IDisposable
             this.filePatch = null;
 
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Преобразование DataTable в рабочую страницу
+    /// </summary>
+    /// <param name="DT"></param>
+    public void Convert(System.Data.DataTable DT)
+    {
+        try
+        {
+            Console.WriteLine($"Convert to DataTable ");
+            this.Sheet.Name = SheetName; // Именование таблицы формирования
+            var useRange = Sheet.UsedRange;
+
+            // Именование колонок
+            char _excelHeader = 'A';
+            foreach (System.Data.DataColumn column in DT.Columns)
+            {
+                Sheet.Cells[1, _excelHeader.ToString()] = column.ColumnName;
+                _excelHeader++;
+            }
+            // Остальная информация
+            for (int i = 0; i < DT.Rows.Count; i++)
+            {
+                _excelHeader = 'A';
+                int arrLength = DT.Rows[i].ItemArray.Length;
+                for (int j = 0; j < arrLength; j++)
+                {
+                    Sheet.Cells[i + 2, _excelHeader] = DT.Rows[i].ItemArray[j];
+                }
+                _excelHeader++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка конвертирования: {ex.Message}");
         }
     }
 
@@ -113,40 +168,6 @@ class ExcelUse : IDisposable
     {
         filePatch = $@"{fileFolder}/{fileName}";
         Save();
-    }
-
-    /// <summary>
-    /// Преобразование DataTable в рабочую страницу
-    /// </summary>
-    /// <param name="DT"></param>
-    public void Convert(System.Data.DataTable DT)
-    {
-        try
-        {
-            this.Sheet.Name = "SummEx";
-            // Именование колонок
-            char _excelHeader = 'A';
-            foreach (System.Data.DataColumn column in DT.Columns)
-            {
-                Sheet.Cells[1, _excelHeader.ToString()] = column.ColumnName;
-                _excelHeader++;
-            }
-            // Остальная информация
-            for (int i = 0; i < DT.Rows.Count; i++)
-            {
-                _excelHeader = 'A';
-                int arrLength = DT.Rows[i].ItemArray.Length;
-                for (int j = 0; j < arrLength; j++)
-                {
-                    Sheet.Cells[i + 2, j] = DT.Rows[i].ItemArray[j];
-                }
-                _excelHeader++;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка конвертирования: {ex.Message}");
-        }
     }
 
     /// <summary>
