@@ -1,17 +1,31 @@
 ﻿using System.Collections.Generic;
 using Excel = Microsoft.Office.Interop.Excel;
+using System.Runtime.InteropServices;
 
 namespace CompareExcel;
 
+/// <summary>
+/// Кол-во данных для вывода в консоль
+/// </summary>
+enum INFOConsole
+{
+    /// <summary>
+    /// Без вывода данных
+    /// </summary>
+    None,
+    /// <summary>
+    /// Вывод информации о главных процессах
+    /// </summary>
+    Main,
+    /// <summary>
+    /// Полный вывод данных
+    /// </summary>
+    All
+}
+
 class ExcelUse : IDisposable
 {
-    public delegate void ErrorQuit();
-    /// <summary>
-    /// Событие на случай ошибки
-    /// </summary>
-    public event ErrorQuit? Turn_nextEV;
-
-    private readonly Excel.Application app;
+    private Excel.Application? app;
     /// <summary>
     /// Рабочая книга
     /// </summary>
@@ -29,86 +43,101 @@ class ExcelUse : IDisposable
     /// Путь к файлу
     /// </summary>
     internal string? filePatch;
+    private INFOConsole INFO;
 
-    public ExcelUse()
+    public ExcelUse(INFOConsole info)
     {
+        this.INFO = info;
         app = new Excel.Application
         {
-            Visible = false
+            Visible = false,
+            SheetsInNewWorkbook = 1
         };
         if (app == null)
         {
-            Turn_nextEV?.Invoke();
             throw new Exception("Приложение Excel не запущенно, убедитесь что пакет office установлен");
         }
+        if ((int)INFO > 0) CColor("\nNew Application", ConsoleColor.DarkMagenta);
     }
 
     /// <summary>
     /// Чтение файла из указанного пути (возвращает DataTable)
     /// </summary>
-    /// <param name="filePatch"></param>
+    /// <param name="filePatch">Путь к папке</param>
+    /// <param name="info">Нужно ли выводить данные в консоль?</param>
     /// <returns></returns>
     public System.Data.DataTable ReadFile(string filePatch)
     {
         try
         {
-            Console.WriteLine($"\nReadFile {filePatch.Split(@"\")[^1]}");
-            for (int i = 0; i < 30; i++)
-                Console.Write("###");
-            Console.WriteLine("\nSTART READ");
+            this.Workbook = app.Workbooks.Open(filePatch);
+            this.filePatch = filePatch;
 
             System.Data.DataTable DT = new();
 
-            this.Workbook = app.Workbooks.Open(filePatch);
-            this.filePatch = filePatch;
+            if ((int)INFO > 0)
+            {
+                CColor("START READ File: ", ConsoleColor.DarkRed, false);
+                Console.WriteLine(filePatch.Split(@"\")[^1]);
+            }
 
             Sheet = (Excel.Worksheet)Workbook.Worksheets[1];
             if (Sheet == null)
             {
-                Turn_nextEV?.Invoke();
                 throw new Exception("Листа не существует, убедитесь в правивильности имени");
             }
-            //Sheet.Activate();
-
-            #region Приведения к Excel.Range возможно пригодится на более ранних версиях языка
-            //Console.WriteLine((Sheet.UsedRange.Cells[1, 1] as Excel.Range).Text); 
-            #endregion
+            Sheet.Activate();
 
             var useRange = Sheet.UsedRange;
             int rowsCount = useRange.Rows.Count;
             int columnsCount = useRange.Columns.Count;
 
-            Console.WriteLine($"rowsCount: {rowsCount}\ncolumnsCount: {columnsCount}");
-
+            if ((int)INFO > 0) Console.WriteLine($"rowsCount: {rowsCount}\ncolumnsCount: {columnsCount}");
+            if ((int)INFO > 1)
+            {
+                Console.WriteLine();
+                CSeparator();
+            }
             // Именование колонок
             for (int i = 1; i <= columnsCount; i++)
             {
                 dynamic columnName = useRange.Cells[1, i];
-                DT.Columns.Add(columnName.Text, columnName.GetType());
+                DT.Columns.Add(columnName.Text);
             }
             // Получение строк
             List<object> listRow = new(); // Лист строки
             for (int i = 2; i <= rowsCount; i++)
             {
-                //Console.WriteLine($"new row [{i-1}]");
+                if((int)INFO > 1) Console.WriteLine($"new row [{i-1}]\n");
                 listRow.Clear();
                 for (int j = 1; j <= columnsCount; j++)
                 {
-                    //Console.WriteLine($"[{i-1},{j}]Text: {useRange.Cells[i, j].Text}");
-                    listRow.Add(useRange.Cells[i, j]); // Заполнение листа строки
+                    string cell = useRange.Cells[i, j].Text;
+                    if ((int)INFO > 1) Console.WriteLine($"[{i - 1},{j}]Text: {cell}");
+                    listRow.Add(cell); // Заполнение листа строки
                 }
                 DT.Rows.Add(listRow.ToArray()); // Добавление новой строки в DT
+                if ((int)INFO > 1) Console.WriteLine();
             }
+            if ((int)INFO > 1) 
+            {
+                CSeparator();
+                Console.WriteLine();
+            }
+            if ((int)INFO > 0) CColor("FINISH READ", ConsoleColor.Green);
 
-            Console.WriteLine("FINISH READ");
             return DT;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка считывания: {ex}");
+            CColor($"Ошибка считывания: {ex}", ConsoleColor.Red);
             this.filePatch = null;
 
             return null;
+        }
+        finally
+        {
+            CloseWB();
         }
     }
 
@@ -120,32 +149,36 @@ class ExcelUse : IDisposable
     {
         try
         {
-            Console.WriteLine($"Convert to DataTable ");
+            this.Workbook = app.Workbooks.Add(Type.Missing);
+            this.Sheet = (Excel.Worksheet)app.Worksheets[1];
             this.Sheet.Name = SheetName; // Именование таблицы формирования
-            var useRange = Sheet.UsedRange;
+
+            if ((int)INFO > 0) CColor($"START CONVERT to DataTable ", ConsoleColor.Red);
+            // TODO: Добавить строку спомощью метода для оценки считывания строк
 
             // Именование колонок
-            char _excelHeader = 'A';
-            foreach (System.Data.DataColumn column in DT.Columns)
+            for (int i = 1; i < DT.Columns.Count; i++)
             {
-                Sheet.Cells[1, _excelHeader.ToString()] = column.ColumnName;
-                _excelHeader++;
+                Sheet.Cells[1,i] = DT.Columns[i - 1].ColumnName;
             }
+
             // Остальная информация
             for (int i = 0; i < DT.Rows.Count; i++)
             {
-                _excelHeader = 'A';
-                int arrLength = DT.Rows[i].ItemArray.Length;
-                for (int j = 0; j < arrLength; j++)
+                if ((int)INFO > 1) Console.WriteLine($"new row [{i}]\n");
+                for (int j = 0; j < DT.Columns.Count; j++)
                 {
-                    Sheet.Cells[i + 2, _excelHeader] = DT.Rows[i].ItemArray[j];
+                    object? cell = DT.Rows[i].ItemArray[j].ToString();
+                    if ((int)INFO > 1) Console.WriteLine($"[{i + 1},{j + 1}]Text: {cell}");
+                    Sheet.Cells[i + 2, j +1] = cell;
                 }
-                _excelHeader++;
+                if ((int)INFO > 1) Console.WriteLine();
             }
+            if ((int)INFO > 0) CColor("FINISH CONVERT", ConsoleColor.Green);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка конвертирования: {ex.Message}");
+            CColor($"Ошибка конвертирования: {ex.Message}", ConsoleColor.Red);
         }
     }
 
@@ -158,9 +191,11 @@ class ExcelUse : IDisposable
         {
             Workbook.SaveAs(filePatch);
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        catch (Exception ex)
+        {
+            CColor($"Ошибка сохранения: {ex.Message}", ConsoleColor.Red);
+        }
     }
-
     /// <summary>
     /// Сохранение файла в указанный путь
     /// </summary>
@@ -177,18 +212,70 @@ class ExcelUse : IDisposable
     /// </summary>
     public void Dispose()
     {
-        try
-        {
-            Workbook.Close();
-            app.Quit();
-            Console.WriteLine("\nDispose. Очистка процессов");
-        }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        if((int)INFO > 0) CColor("\nDispose. Очистка процессов", ConsoleColor.Yellow);
+
+        app.Quit();
+        //while(Marshal.ReleaseComObject(app) != 0) { }
+        app = null;
+        GC.Collect();
+        //GC.WaitForPendingFinalizers();
     }
 
     /// <summary>
     /// Закрытие приложения (ручной запуск)
     /// </summary>
     protected internal void Quit() => app.Quit();
+    /// <summary>
+    /// Закрытие рабочей книги (ручной запуск)
+    /// </summary>
+    protected internal void CloseWB()
+    {
+        if ((int)INFO > 0) CColor("CloseWB", ConsoleColor.Yellow);
+        Workbook.Close();
+    }
+    #region Консоль
+    /// <summary>
+    /// Пишет текст указанным цветом
+    /// </summary>
+    /// <param name="str">Текст для вывода в консоль</param>
+    /// <param name="col">Цвет которым будет написан текст</param>
+    /// <param name="nonNewLine">Добавлять новую строку (WriteLine)?</param>
+    private static void CColor(string str, ConsoleColor col = ConsoleColor.White, bool nonNewLine = true)
+    {
+        ConsoleColor def = Console.ForegroundColor; // Получение стандартного цвета
+
+        Console.ForegroundColor = col;
+
+        if (nonNewLine) Console.WriteLine(str);
+        else Console.Write(str);
+
+        Console.ForegroundColor = def; // Возвращение стандартного цвета
+    }
+    /// <summary>
+    /// Разделитель информации в строке
+    /// </summary>
+    /// <param name="lenght">Длина деления</param>
+    private static void CSeparator(int lenght)
+    {
+        for (int i = 0; i < lenght; i++)
+            Console.Write("#");
+        Console.WriteLine();
+    }
+    /// <summary>
+    /// Разделитель информации в строке
+    /// </summary>
+    /// <param name="min">Минимальное кол-во символов</param>
+    /// <param name="max">Максимальное кол-во символов</param>
+    private static void CSeparator(int min = 30, int max = 50)
+    {
+        Random rnd = new();
+        int ss = rnd.Next(min, max);
+        CSeparator(ss);
+    }
+    private void CSetLine(string str)
+    {
+        // TODO: Добавить метод изменения строки для прогресс
+    }
+    #endregion
 }
 

@@ -12,33 +12,77 @@ public class Program
     /// <summary>
     /// Директория извлекаемых таблиц
     /// </summary>
-    static public string directory = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Постановление о запрете на регистрационные действия в отношении транспортных средств";
+    static public string directory = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Постановление о возбуждении исполнительного производства";
+    /// <summary>
+    /// Директория вывода файлов
+    /// </summary>
+    static public string dirOut = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Full";
+    /// <summary>
+    /// Название консоли
+    /// </summary>
+    static private string title = "Excel Merge";
+
+    /// <summary>
+    /// Вывод информации в консоль
+    /// </summary>
+    static INFOConsole INFO = INFOConsole.All;
+    /// <summary>
+    /// Формат даты месяц и год
+    /// </summary>
+    struct DateMY
+    {
+        public int month;
+        public int year;
+
+        public string GetDate() => $"{month}.{year}";
+    }
 
     static void Main(string[] args)
     {
         Stopwatch timer = new();
+        Console.Title = title;
+        Console.CursorVisible = false;
+
         timer.Start(); // Таймер
 
-        Dictionary<int, DataTable> dictDT = new();
+        Dictionary<DateMY, DataTable> dictDT = new();
         List<DataTable> allDT = ReadRange(directory);
         foreach (DataTable dt in allDT)
         {
-            // Взятие со строки даты документа {DocDate} месяц и год формат: {042022}
-            int month = Convert.ToInt32(dt.Rows[2]["ns1:DocDate"].ToString().Substring(2).Replace(".", ""));
-
-            if (dictDT.Keys.Contains(month))
+            string my_str = dt.Rows[0]["ns1:DocDate"].ToString();
+            DateMY date = new()
             {
-                dictDT[month].Merge(dt);
+                month = Convert.ToInt32(my_str.ToString().Substring(3, 2)),
+                year = Convert.ToInt32(my_str.ToString().Substring(6, 4))
+            };
+
+            if (dictDT.ContainsKey(date))
+            {
+                // Соединение таблиц. Сохранение данных и добавление других колонок
+                dictDT[date].Merge(dt, true, MissingSchemaAction.Add);
             }
             else
             {
-                dictDT.Add(month, dt);
+                dictDT.Add(date, dt);
             }
-            // TODO: Напиши конвертирования по словарю, и сохранение
+        }
+
+        int counter = 1; // Счетчик для прогресса
+        foreach (KeyValuePair<DateMY, DataTable> dt in dictDT)
+        {
+            Console.Title = $"DataTable: {dt.Key.GetDate()} | Прогресс = {Math.Round((double)(counter * 100 / dictDT.Count))}% [{counter}/{dictDT.Count}]";
+
+            if ((int)INFO > 0) Console.WriteLine($"Удаление дублей. Ключ таблицы: {dt.Key.GetDate()}");
+            dt.Value.AsEnumerable().Distinct(DataRowComparer.Default);
+
+            using ExcelUse excel = new(INFO);
+            excel.Convert(dt.Value);
+            excel.SaveAs(dirOut, GetFileName(directory, dt.Key.month, dt.Key.year));
+            counter++;
         }
 
         timer.Stop();
-        Console.WriteLine($"Директория: {directory}\n Потрачено времени: {timer.ElapsedMilliseconds} ms.");
+        Console.WriteLine($"Потрачено времени: {timer.ElapsedMilliseconds / 60} s.");
     }
 
     /// <summary>
@@ -50,14 +94,22 @@ public class Program
     {
         try
         {
-            List<DataTable> list = new();
-            Console.WriteLine($"Сканирование директории: {dirName.Substring(0, dirName.LastIndexOf(@"\"))}");
             string[] filesDir = Directory.GetFiles(dirName, "*.xlsx"); // Сканирует файлы формата Excel
-            foreach (string filePatch in filesDir)
+            string folder = dirName.Split(@"\")[^1];
+
+            List<DataTable> list = new();
+
+            Console.WriteLine($"Сканирование директории: {dirName}");
+
+            using ExcelUse excelApp = new(INFO);
+            for (int i = 0; i < filesDir.Length; i++)
             {
-                using ExcelUse excelApp = new();
-                list.Add(excelApp.ReadFile(filePatch));
+                Console.Title = $"Папка: {folder} | Прогресс = {Math.Round((double)((i + 1) * 100 / filesDir.Length))}% [{i + 1}/{filesDir.Length}]";
+                if ((int)INFO > 0) Console.WriteLine($"\n[{i + 1}/{filesDir.Length}]");
+                list.Add(excelApp.ReadFile(filesDir[i]));
             }
+            Console.Title = title;
+
             return list;
         }
         catch (Exception ex) { Console.WriteLine(ex.Message); return null; }
@@ -79,7 +131,9 @@ public class Program
     /// <returns></returns>
     internal static string GetFileName(string DirFolder, int mounth, int year)
     {
+        // Если месяц меньше 10 добавляется 0, для формирования
+        string mounthSTR = (mounth > 10) ? mounth.ToString() : "0" + mounth.ToString();
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
-        return $"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounth}_{year}";
+        return $@"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}";
     }
 }
