@@ -169,7 +169,6 @@ class ExcelUse : IDisposable
             int maxRows = DT.Rows.Count;
             for (int i = 0; i < maxRows; i++)
             {
-                int pr_length = 0;
                 if ((int)INFO == 1) CSetLine($"Прогресс конвертации: {Math.Round((double)((i + 1) * 100 / maxRows))}% rows[{i + 1}/{maxRows}]"); // Прогресс при уровне информирования Main
                 if ((int)INFO > 1) Console.WriteLine($"new row [{i}]\n");
                 for (int j = 0; j < DT.Columns.Count; j++)

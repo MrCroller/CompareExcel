@@ -5,15 +5,15 @@ using System.Linq;
 namespace CompareExcel;
 
 public class Program
-{ 
+{
     /// <summary>
     /// Директория извлекаемых таблиц
     /// </summary>
-    static public string directory = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Постановление о наложении ареста";
+    static private string directory;
     /// <summary>
     /// Директория вывода файлов
     /// </summary>
-    static public string dirOut = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Full";
+    static private string dirOut;
     /// <summary>
     /// Название консоли
     /// </summary>
@@ -36,6 +36,8 @@ public class Program
 
     static void Main(string[] args)
     {
+        AnalizArgs(args);
+
         Stopwatch timer = new();
         Console.Title = title;
         Console.CursorVisible = false;
@@ -85,16 +87,101 @@ public class Program
         var time = timer.ElapsedMilliseconds;
         int time_s = (int)time / 1000;
         int time_m = (int)time / 1000 / 60;
-        
-        Console.WriteLine($"Потрачено времени: {time_m}m{time_s-(time_m * 60)}s");
+
+        Console.WriteLine($"Потрачено времени: {time_m}m{time_s - (time_m * 60)}s");
     }
+
+    #region Параметры запуска
+
+    /// <summary>
+    /// Анализ входящих аргументов
+    /// </summary>
+    /// <param name="args">Массив аргументов</param>
+    private static void AnalizArgs(string[] args)
+    {
+        Console.WriteLine($"args.Length: {args.Length}");
+        // Анализ аргументов
+        for (int i = 0; i < args.Length; i++)
+        {
+            Console.WriteLine($"i: {i}");
+            switch (args[i])
+            {
+                //TODO: Ошибка с параметрами запуска при отсутствии последнего
+                case "-help":
+                    Console.WriteLine("-----Commands-----\n-help (показать команды)\n-p (Папка для чтения)\n-o (Папка для вывода объединенного файла)\n-i (Уровень информирования, выбор из 3 доступных: None - Без консольного вывода, Main - главные процессы [по умолчанию], All - Полный вывод, аж на каждую ячеечку. Много букав!)\n------------------");
+                    break;
+                case "-p":
+                    string patchDir = PatchSplit(args, ref i);
+                    if (Directory.Exists(patchDir))
+                    {
+                        Console.WriteLine($"\n{patchDir}\n"); //to_delete
+                        directory = patchDir;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Не задана папка для чтения или ее не существует");
+                        Console.WriteLine($"\n{patchDir}\n"); //to_delete
+                    }
+                    break;
+                case "-o":
+                    string patchOut = PatchSplit(args, ref i);
+                    if (Directory.Exists(patchOut))
+                    {
+                        Console.WriteLine($"\n{patchOut}\n"); //to_delete
+                        dirOut = patchOut;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Не задана папка для вывода или ее не существует");
+                        Console.WriteLine($"\n{patchOut}\n"); //to_delete
+                    }
+                    break;
+                case "-i":
+                    switch (args[i + 1].ToLower())
+                    {
+                        case "none": INFO = INFOConsole.None; break;
+                        case "main": INFO = INFOConsole.Main; break;
+                        case "all": INFO = INFOConsole.All; break;
+                        default:
+                            Console.WriteLine("Вариант не распознан. Вывод по умолчанию: Main");
+                            break;
+                    }
+                    break;
+            }
+        }
+        if (directory == null || dirOut == null)
+        {
+            throw new Exception("Необходимо ввести путь к папке для сортировки и выходную папку для объединненных файлов");
+        }
+        Console.ReadKey();
+    }
+
+    /// <summary>
+    /// Объединяет строку пути если в ней есть пробелы
+    /// </summary>
+    /// <param name="args">Массив аргументов</param>
+    /// <param name="i">Текущий индекс элемента</param>
+    /// <returns></returns>
+    private static string PatchSplit(string[] args, ref int i)
+    {
+        string? strDir = null;
+        // Если в пути есть пробелы объединяет строки
+        for (int j = i; !args[j].StartsWith('-'); j++)
+        {
+            strDir += args[j + 1] + " ";
+            i++;
+        }
+        return strDir.Trim();
+    }
+
+    #endregion
 
     /// <summary>
     /// Метод читает все файлы в каталоге и возвращает лист таблиц DataTable
     /// </summary>
     /// <param name="dirName">Путь к папке</param>
     /// <returns></returns>
-    static List<DataTable> ReadRange(string dirName)
+    private static List<DataTable> ReadRange(string dirName)
     {
         try
         {
