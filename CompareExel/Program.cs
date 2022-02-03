@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
 using System.Diagnostics;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace CompareExcel;
 
 public class Program
-{
+{ 
     /// <summary>
     /// Директория извлекаемых таблиц
     /// </summary>
-    static public string directory = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Постановление о возбуждении исполнительного производства";
+    static public string directory = @"C:\Users\pvslavinsky\Desktop\ФКР\Результаты\Постановление о наложении ареста";
     /// <summary>
     /// Директория вывода файлов
     /// </summary>
@@ -25,7 +22,7 @@ public class Program
     /// <summary>
     /// Вывод информации в консоль
     /// </summary>
-    static INFOConsole INFO = INFOConsole.All;
+    static INFOConsole INFO = INFOConsole.Main;
     /// <summary>
     /// Формат даты месяц и год
     /// </summary>
@@ -43,6 +40,7 @@ public class Program
         Console.Title = title;
         Console.CursorVisible = false;
 
+        Console.Clear();
         timer.Start(); // Таймер
 
         Dictionary<DateMY, DataTable> dictDT = new();
@@ -72,7 +70,7 @@ public class Program
         {
             Console.Title = $"DataTable: {dt.Key.GetDate()} | Прогресс = {Math.Round((double)(counter * 100 / dictDT.Count))}% [{counter}/{dictDT.Count}]";
 
-            if ((int)INFO > 0) Console.WriteLine($"Удаление дублей. Ключ таблицы: {dt.Key.GetDate()}");
+            if ((int)INFO > 0) Console.WriteLine($"\nУдаление дублей. Ключ таблицы: {dt.Key.GetDate()}");
             dt.Value.AsEnumerable().Distinct(DataRowComparer.Default);
 
             using ExcelUse excel = new(INFO);
@@ -82,7 +80,13 @@ public class Program
         }
 
         timer.Stop();
-        Console.WriteLine($"Потрачено времени: {timer.ElapsedMilliseconds / 60} s.");
+
+        // TODO: Сделать правильный, корректный, вывод затраченного времени
+        var time = timer.ElapsedMilliseconds;
+        int time_s = (int)time / 1000;
+        int time_m = (int)time / 1000 / 60;
+        
+        Console.WriteLine($"Потрачено времени: {time_m}m{time_s-(time_m * 60)}s");
     }
 
     /// <summary>

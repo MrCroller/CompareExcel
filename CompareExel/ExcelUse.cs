@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿global using System;
+global using System.Collections.Generic;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Runtime.InteropServices;
 
@@ -43,6 +44,9 @@ class ExcelUse : IDisposable
     /// Путь к файлу
     /// </summary>
     internal string? filePatch;
+    /// <summary>
+    /// Уровень информирования (данных в консоль)
+    /// </summary>
     private INFOConsole INFO;
 
     public ExcelUse(INFOConsole info)
@@ -108,7 +112,7 @@ class ExcelUse : IDisposable
             List<object> listRow = new(); // Лист строки
             for (int i = 2; i <= rowsCount; i++)
             {
-                if((int)INFO > 1) Console.WriteLine($"new row [{i-1}]\n");
+                if ((int)INFO > 1) Console.WriteLine($"new row [{i - 1}]\n");
                 listRow.Clear();
                 for (int j = 1; j <= columnsCount; j++)
                 {
@@ -119,7 +123,7 @@ class ExcelUse : IDisposable
                 DT.Rows.Add(listRow.ToArray()); // Добавление новой строки в DT
                 if ((int)INFO > 1) Console.WriteLine();
             }
-            if ((int)INFO > 1) 
+            if ((int)INFO > 1)
             {
                 CSeparator();
                 Console.WriteLine();
@@ -154,26 +158,29 @@ class ExcelUse : IDisposable
             this.Sheet.Name = SheetName; // Именование таблицы формирования
 
             if ((int)INFO > 0) CColor($"START CONVERT to DataTable ", ConsoleColor.Red);
-            // TODO: Добавить строку спомощью метода для оценки считывания строк
 
             // Именование колонок
             for (int i = 1; i < DT.Columns.Count; i++)
             {
-                Sheet.Cells[1,i] = DT.Columns[i - 1].ColumnName;
+                Sheet.Cells[1, i] = DT.Columns[i - 1].ColumnName;
             }
 
             // Остальная информация
-            for (int i = 0; i < DT.Rows.Count; i++)
+            int maxRows = DT.Rows.Count;
+            for (int i = 0; i < maxRows; i++)
             {
+                int pr_length = 0;
+                if ((int)INFO == 1) CSetLine($"Прогресс конвертации: {Math.Round((double)((i + 1) * 100 / maxRows))}% rows[{i + 1}/{maxRows}]"); // Прогресс при уровне информирования Main
                 if ((int)INFO > 1) Console.WriteLine($"new row [{i}]\n");
                 for (int j = 0; j < DT.Columns.Count; j++)
                 {
                     object? cell = DT.Rows[i].ItemArray[j].ToString();
                     if ((int)INFO > 1) Console.WriteLine($"[{i + 1},{j + 1}]Text: {cell}");
-                    Sheet.Cells[i + 2, j +1] = cell;
+                    Sheet.Cells[i + 2, j + 1] = cell;
                 }
                 if ((int)INFO > 1) Console.WriteLine();
             }
+            if ((int)INFO == 1) Console.WriteLine();
             if ((int)INFO > 0) CColor("FINISH CONVERT", ConsoleColor.Green);
         }
         catch (Exception ex)
@@ -189,7 +196,13 @@ class ExcelUse : IDisposable
     {
         try
         {
-            Workbook.SaveAs(filePatch);
+            // Сохранение с перезаписью
+            if (File.Exists(filePatch))
+            {
+                CColor($"Файл {filePatch} уже есть в директории. Удаление", ConsoleColor.DarkRed);
+                File.Delete(filePatch);
+            }
+            Workbook.SaveAs(filePatch, Excel.XlFileFormat.xlWorkbookDefault, Type.Missing, Type.Missing, false, false, Excel.XlSaveAsAccessMode.xlNoChange, Excel.XlSaveConflictResolution.xlLocalSessionChanges, false);
         }
         catch (Exception ex)
         {
@@ -203,7 +216,7 @@ class ExcelUse : IDisposable
     /// <param name="fileName">Имя файла</param>
     public void SaveAs(string fileFolder, string fileName)
     {
-        filePatch = $@"{fileFolder}/{fileName}";
+        filePatch = $@"{fileFolder}\{fileName}.xlsx";
         Save();
     }
 
@@ -212,7 +225,7 @@ class ExcelUse : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if((int)INFO > 0) CColor("\nDispose. Очистка процессов", ConsoleColor.Yellow);
+        if ((int)INFO > 0) CColor("Dispose. Очистка процессов", ConsoleColor.Yellow);
 
         app.Quit();
         //while(Marshal.ReleaseComObject(app) != 0) { }
@@ -231,8 +244,9 @@ class ExcelUse : IDisposable
     protected internal void CloseWB()
     {
         if ((int)INFO > 0) CColor("CloseWB", ConsoleColor.Yellow);
-        Workbook.Close();
+        Workbook.Close(false);
     }
+
     #region Консоль
     /// <summary>
     /// Пишет текст указанным цветом
@@ -272,9 +286,15 @@ class ExcelUse : IDisposable
         int ss = rnd.Next(min, max);
         CSeparator(ss);
     }
-    private void CSetLine(string str)
+    /// <summary>
+    /// Пишет в консоль с той же строчки (перезаписывает)
+    /// </summary>
+    /// <param name="str">Строка</param>
+    /// <param name="horiaontal">Горизонтальное смещение</param>
+    private static void CSetLine(string str, int horiaontal = 0)
     {
-        // TODO: Добавить метод изменения строки для прогресс
+        Console.SetCursorPosition(horiaontal, Console.GetCursorPosition().Top);
+        Console.Write(str);
     }
     #endregion
 }
