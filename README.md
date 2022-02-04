@@ -11,9 +11,9 @@
 >    - `All` - Полный вывод, аж на каждую ячеечку.
 
 
-##### Пути к папкам в PowerShell окружать символом `` ` ``. Пример:
+##### Пути к папкам в PowerShell окружать символом `'`. Пример:
 ```
-.\UseExcel.exe -p `C:\Users\Username\Downloads\resources` -o `C:\Users\Username\Downloads\resources two\chek 1`
+.\UseExcel.exe -p 'C:\Users\Username\Downloads\resources' -o 'C:\Users\Username\Downloads\resources two\chek 1'
 ```
 
 <details> 
