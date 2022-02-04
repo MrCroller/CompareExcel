@@ -15,3 +15,11 @@
 ```
 .\UseExcel.exe -p `C:\Users\Username\Downloads\resources` -o `C:\Users\Username\Downloads\resources two\chek 1`
 ```
+
+<details> 
+  <summary>Схема скрипта</summary>
+  
+   ![схема скрипта](https://user-images.githubusercontent.com/58171847/152562046-d859c65e-bd69-4342-b2e7-32a9b36ab702.png)
+  
+</details>
+
