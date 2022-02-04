@@ -88,7 +88,7 @@ public class Program
         int time_s = (int)time / 1000;
         int time_m = (int)time / 1000 / 60;
 
-        Console.WriteLine($"Потрачено времени: {time_m}m{time_s - (time_m * 60)}s");
+        Console.WriteLine($"Потрачено времени: {time_m}m {time_s - (time_m * 60)}s");
     }
 
     #region Параметры запуска
@@ -99,41 +99,32 @@ public class Program
     /// <param name="args">Массив аргументов</param>
     private static void AnalizArgs(string[] args)
     {
-        Console.WriteLine($"args.Length: {args.Length}");
         // Анализ аргументов
         for (int i = 0; i < args.Length; i++)
         {
-            Console.WriteLine($"i: {i}");
             switch (args[i])
             {
-                //TODO: Ошибка с параметрами запуска при отсутствии последнего
                 case "-help":
-                    Console.WriteLine("-----Commands-----\n-help (показать команды)\n-p (Папка для чтения)\n-o (Папка для вывода объединенного файла)\n-i (Уровень информирования, выбор из 3 доступных: None - Без консольного вывода, Main - главные процессы [по умолчанию], All - Полный вывод, аж на каждую ячеечку. Много букав!)\n------------------");
+                    Console.WriteLine("-----Commands-----\n-help (показать команды)\n-p (Папка для чтения)\n-o (Папка для вывода объединенного файла)\n-i (Уровень информирования, выбор из 3 доступных: None - Без консольного вывода, Main - главные процессы [по умолчанию], All - Полный вывод, аж на каждую ячеечку. Много букав!)\nДля оболочки PowerShell оборачивайте путь в ковычки `directory'\n------------------");
                     break;
                 case "-p":
-                    string patchDir = PatchSplit(args, ref i);
-                    if (Directory.Exists(patchDir))
+                    if (Directory.Exists(args[i + 1]))
                     {
-                        Console.WriteLine($"\n{patchDir}\n"); //to_delete
-                        directory = patchDir;
+                        directory = args[i + 1];
                     }
                     else
                     {
                         Console.WriteLine("Не задана папка для чтения или ее не существует");
-                        Console.WriteLine($"\n{patchDir}\n"); //to_delete
                     }
                     break;
                 case "-o":
-                    string patchOut = PatchSplit(args, ref i);
-                    if (Directory.Exists(patchOut))
+                    if (Directory.Exists(args[i + 1]))
                     {
-                        Console.WriteLine($"\n{patchOut}\n"); //to_delete
-                        dirOut = patchOut;
+                        dirOut = args[i + 1];
                     }
                     else
                     {
                         Console.WriteLine("Не задана папка для вывода или ее не существует");
-                        Console.WriteLine($"\n{patchOut}\n"); //to_delete
                     }
                     break;
                 case "-i":
@@ -153,27 +144,7 @@ public class Program
         {
             throw new Exception("Необходимо ввести путь к папке для сортировки и выходную папку для объединненных файлов");
         }
-        Console.ReadKey();
     }
-
-    /// <summary>
-    /// Объединяет строку пути если в ней есть пробелы
-    /// </summary>
-    /// <param name="args">Массив аргументов</param>
-    /// <param name="i">Текущий индекс элемента</param>
-    /// <returns></returns>
-    private static string PatchSplit(string[] args, ref int i)
-    {
-        string? strDir = null;
-        // Если в пути есть пробелы объединяет строки
-        for (int j = i; !args[j].StartsWith('-'); j++)
-        {
-            strDir += args[j + 1] + " ";
-            i++;
-        }
-        return strDir.Trim();
-    }
-
     #endregion
 
     /// <summary>
