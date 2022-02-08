@@ -16,7 +16,7 @@
 
 ##### Пути к папкам в PowerShell окружать символом `'`. Пример:
 ```
-.\UseExcel.exe -p 'C:\Users\Username\Downloads\resources' -o 'C:\Users\Username\Downloads\resources out'
+.\UseExcel.exe -d 'C:\Users\Username\Downloads\resources' -o 'C:\Users\Username\Downloads\resources out'
 ```
 
 <details> 
