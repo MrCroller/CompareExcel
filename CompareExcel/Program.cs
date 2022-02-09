@@ -58,9 +58,17 @@ public class Program
                 throw new Exception("Указанная папка не имеет вложенных папок");
             }
 
-            for (int i = 0; i < dirArr.Length; i++)
+            int lastindex = 0; // индекс последнего скомпелированного файла
+            if (new DirectoryInfo(dirOut).GetFiles().Length > 0)
             {
-                Console.Title = $"dir:[{i}/{dirArr.Length}] ";
+                string lastFile = GetLastFile(dirOut);
+                lastindex = Array.IndexOf(dirArr, $@"{directory}\{lastFile.Remove(lastFile.Length - 13)}"); // Название файла без даты в конце
+                if((int)INFO > 1) Console.WriteLine($"fullFile: {lastFile}\n revert: {directory}\\{lastFile.Remove(lastFile.Length - 13)}\nlastindex: {lastindex}");
+            }
+
+            for (int i = lastindex; i < dirArr.Length; i++)
+            {
+                Console.Title = $"dir:[{i + 1}/{dirArr.Length}] ";
 
                 List<DataTable> rr = ReadRange(dirArr[i]);
                 Dictionary<DateMY, DataTable> dictDT = SortDT(rr);
@@ -237,6 +245,28 @@ public class Program
     }
 
     #endregion
+
+    /// <summary>
+    /// Возвращает имя последнего созданного файла в директории
+    /// </summary>
+    /// <param name="DirFolder">Директория</param>
+    /// <returns></returns>
+    private static string GetLastFile(string DirFolder)
+    {
+        DateTime dt = new DateTime(1990, 1, 1);
+        string fileName = "";
+
+        FileSystemInfo[] fileSystemInfo = new DirectoryInfo(DirFolder).GetFileSystemInfos();
+        foreach (FileSystemInfo fileSI in fileSystemInfo)
+        {
+            if (dt < Convert.ToDateTime(fileSI.CreationTime))
+            {
+                dt = Convert.ToDateTime(fileSI.CreationTime);
+                fileName = fileSI.Name;
+            }
+        }
+        return fileName;
+    }
 
     /// <summary>
     /// Создание имени файла
