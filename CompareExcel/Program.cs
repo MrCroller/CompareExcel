@@ -63,7 +63,12 @@ public class Program
             {
                 string lastFile = GetLastFile(dirOut);
                 lastindex = Array.IndexOf(dirArr, $@"{directory}\{lastFile.Remove(lastFile.Length - 13)}"); // Название файла без даты в конце
-                if((int)INFO > 1) Console.WriteLine($"fullFile: {lastFile}\n revert: {directory}\\{lastFile.Remove(lastFile.Length - 13)}\nlastindex: {lastindex}");
+                if ((int)INFO > 1) 
+                {
+                    Console.WriteLine($"fullFile: {lastFile}\n revert: {directory}\\{lastFile.Remove(lastFile.Length - 13)}\nlastindex: {lastindex}");
+                    Console.ReadKey();
+                    Console.ReadKey();
+                }
             }
 
             for (int i = lastindex; i < dirArr.Length; i++)
