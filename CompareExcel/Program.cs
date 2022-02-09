@@ -64,14 +64,14 @@ public class Program
 
                 List<DataTable> rr = ReadRange(dirArr[i]);
                 Dictionary<DateMY, DataTable> dictDT = SortDT(rr);
-                ConvAndSave(dictDT);
+                ConvAndSave(dictDT, dirArr[i]);
             }
         }
         else
         {
             List<DataTable> rr = ReadRange(directory);
             Dictionary<DateMY, DataTable> dictDT = SortDT(rr);
-            ConvAndSave(dictDT);
+            ConvAndSave(dictDT, directory);
         }
 
         timer.Stop();
@@ -216,7 +216,8 @@ public class Program
     /// Конвертация и сохранение каждого элемента словаря
     /// </summary>
     /// <param name="dictDT">Словарь DateTable</param>
-    private static void ConvAndSave(Dictionary<DateMY, DataTable> dictDT)
+    /// <param name="dir">Директория файла</param>
+    private static void ConvAndSave(Dictionary<DateMY, DataTable> dictDT, string dir)
     {
         int counter = 1; // Счетчик для прогресса
         string tt = Console.Title;
@@ -230,7 +231,7 @@ public class Program
 
             using ExcelUse excel = new(INFO);
             excel.Convert(dt.Value);
-            excel.SaveAs(dirOut, GetFileName(directory, dt.Key.month, dt.Key.year));
+            excel.SaveAs(dirOut, GetFileName(dir, dt.Key.month, dt.Key.year));
             counter++;
         }
     }
@@ -256,6 +257,7 @@ public class Program
         // Если месяц меньше 10 добавляется 0, для формирования
         string mounthSTR = (mounth > 10) ? mounth.ToString() : "0" + mounth.ToString();
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
+        Console.WriteLine($"patch: {DirFolder}\nName:{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}");
         return $@"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}";
     }
 }
