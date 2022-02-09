@@ -165,7 +165,7 @@ public class Program
 
             List<DataTable> list = new();
 
-            Console.WriteLine($"Сканирование директории: {dirName}");
+            Console.WriteLine($"\nСканирование директории: {dirName}");
 
             using ExcelUse excelApp = new(INFO);
             for (int i = 0; i < filesDir.Length; i++)
@@ -257,7 +257,6 @@ public class Program
         // Если месяц меньше 10 добавляется 0, для формирования
         string mounthSTR = (mounth > 10) ? mounth.ToString() : "0" + mounth.ToString();
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
-        Console.WriteLine($"patch: {DirFolder}\nName:{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}");
         return $@"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}";
     }
 }
