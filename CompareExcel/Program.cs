@@ -22,11 +22,11 @@ public class Program
     /// Название консоли
     /// </summary>
     static private string title = "Excel Merge ";
-
     /// <summary>
-    /// Вывод информации в консоль
+    /// Кол-во повторных попыток вызова ошибки
     /// </summary>
-    static INFOConsole INFO = INFOConsole.Main;
+    static private int errorReplayCount = 3;
+
     /// <summary>
     /// Формат даты месяц и год
     /// </summary>
@@ -52,7 +52,7 @@ public class Program
         if (main_Dir)
         {
             string[]? dirArr = Directory.GetDirectories(directory);
-            if((int)INFO > 1) Console.WriteLine(string.Join("\n", dirArr));
+            CConsole.Print(string.Join("\n", dirArr), INFOConsole.All);
             if (dirArr.Length == 0)
             {
                 throw new Exception("Указанная папка не имеет вложенных папок");
@@ -63,12 +63,9 @@ public class Program
             {
                 string lastFile = GetLastFile(dirOut);
                 lastindex = Array.IndexOf(dirArr, $@"{directory}\{lastFile.Remove(lastFile.Length - 13)}"); // Название файла без даты в конце
-                if ((int)INFO > 1) 
-                {
-                    Console.WriteLine($"fullFile: {lastFile}\n revert: {directory}\\{lastFile.Remove(lastFile.Length - 13)}\nlastindex: {lastindex}");
-                    Console.ReadKey();
-                    Console.ReadKey();
-                }
+
+                CConsole.Print($"fullFile: {lastFile}\n revert: {directory}\\{lastFile.Remove(lastFile.Length - 13)}\nlastindex: {lastindex}", INFOConsole.All);
+                CConsole.Await(INFOConsole.All);
             }
 
             for (int i = lastindex; i < dirArr.Length; i++)
@@ -145,9 +142,9 @@ public class Program
                 case "-i": // Уровень информирования
                     switch (args[i + 1].ToLower())
                     {
-                        case "none": INFO = INFOConsole.None; break;
-                        case "main": INFO = INFOConsole.Main; break;
-                        case "all": INFO = INFOConsole.All; break;
+                        case "none": CConsole.INFO = INFOConsole.None; break;
+                        case "main": CConsole.INFO = INFOConsole.Main; break;
+                        case "all": CConsole.INFO = INFOConsole.All; break;
                         default:
                             Console.WriteLine("Вариант не распознан. Вывод по умолчанию: Main");
                             break;
@@ -172,21 +169,35 @@ public class Program
     {
         try
         {
-            string[] filesDir = Directory.GetFiles(dirName, "*.xlsx"); // Сканирует файлы формата Excel
+            string[] filesDir = Directory.GetFiles(dirName, "*.xlsx", SearchOption.TopDirectoryOnly); // Сканирует файлы формата Excel
             string folder = dirName.Split(@"\")[^1];
             string tt = Console.Title;
 
             List<DataTable> list = new();
 
-            Console.WriteLine($"\nСканирование директории: {dirName}");
+            CConsole.Print($"\nСканирование директории: {dirName}");
 
-            using ExcelUse excelApp = new(INFO);
+            using ExcelUse excelApp = new();
             for (int i = 0; i < filesDir.Length; i++)
             {
-                Console.Title = tt + $"Папка: {folder} | Прогресс = {Math.Round((double)((i + 1) * 100 / filesDir.Length))}% [{i + 1}/{filesDir.Length}]";
+                Console.Title = tt + $"Папка: {folder} | {CConsole.Progress(i, filesDir.Length, "Прогресс = ")}";
+                CConsole.Print($"\n[{i + 1}/{filesDir.Length}]");
 
-                if ((int)INFO > 0) Console.WriteLine($"\n[{i + 1}/{filesDir.Length}]");
-                list.Add(excelApp.ReadFile(filesDir[i]));
+                DataTable dt = new();
+                int error_Count = 0;
+                do
+                {
+                    dt = excelApp.ReadFile(filesDir[i]);
+                    if (dt == null)
+                    {
+                        error_Count++;
+                        if (error_Count > errorReplayCount) continue;
+                        CConsole.Print($"Повторная попытка {error_Count}");
+                        Thread.Sleep(3000);
+                    }
+                } while (dt == null && error_Count <= errorReplayCount);
+
+                list.Add(dt);
             }
             Console.Title = title;
 
@@ -202,10 +213,15 @@ public class Program
     /// <returns></returns>
     private static Dictionary<DateMY, DataTable> SortDT(List<DataTable> allDT)
     {
+        CConsole.WriteLine();
         Dictionary<DateMY, DataTable> dictDT = new();
-        foreach (DataTable dt in allDT)
+        for (int i = 0; i < allDT.Count; i++)
         {
-            string my_str = dt.Rows[0]["ns1:DocDate"].ToString(); // Колонка с датой документа
+            string strsort = "Сортировка DataTable по датам: ";
+            CConsole.Print(strsort, col: ConsoleColor.Red, newLine: false);
+            CConsole.SetLine(CConsole.Progress(i, allDT.Count, spiner: true), horiaontal: strsort.Length);
+
+            string my_str = allDT[i].Rows[0]["ns1:DocDate"].ToString(); // Колонка с датой документа
             DateMY date = new()
             {
                 month = Convert.ToInt32(my_str.ToString().Substring(3, 2)),
@@ -215,13 +231,14 @@ public class Program
             if (dictDT.ContainsKey(date))
             {
                 // Соединение таблиц. Сохранение данных и добавление других колонок
-                dictDT[date].Merge(dt, true, MissingSchemaAction.Add);
+                dictDT[date].Merge(allDT[i], true, MissingSchemaAction.Add);
             }
             else
             {
-                dictDT.Add(date, dt);
+                dictDT.Add(date, allDT[i]);
             }
         }
+        CConsole.WriteLine();
         return dictDT;
     }
 
@@ -237,12 +254,11 @@ public class Program
 
         foreach (KeyValuePair<DateMY, DataTable> dt in dictDT)
         {
-            Console.Title = tt + $"DataTable: {dt.Key.GetDate()} | Прогресс = {Math.Round((double)(counter * 100 / dictDT.Count))}% [{counter}/{dictDT.Count}]";
-
-            if ((int)INFO > 0) Console.WriteLine($"\nУдаление дублей. Ключ таблицы: {dt.Key.GetDate()}");
+            Console.Title = tt + $"DataTable: {dt.Key.GetDate()} | {CConsole.Progress(counter, dictDT.Count, "Прогресс = ")}";
+            CConsole.Print($"\nУдаление дублей. Ключ таблицы: {dt.Key.GetDate()}");
             dt.Value.AsEnumerable().Distinct(DataRowComparer.Default); // Удаление дублей
 
-            using ExcelUse excel = new(INFO);
+            using ExcelUse excel = new();
             excel.Convert(dt.Value);
             excel.SaveAs(dirOut, GetFileName(dir, dt.Key.month, dt.Key.year));
             counter++;
@@ -290,7 +306,7 @@ public class Program
     internal static string GetFileName(string DirFolder, int mounth, int year)
     {
         // Если месяц меньше 10 добавляется 0, для формирования
-        string mounthSTR = (mounth > 10) ? mounth.ToString() : "0" + mounth.ToString();
+        string mounthSTR = mounth < 10 ? "0" + mounth.ToString() : mounth.ToString();
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
         return $@"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}";
     }
