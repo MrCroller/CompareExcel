@@ -185,45 +185,41 @@ public class Program
     /// <returns></returns>
     private static List<DataTable> ReadRange(string dirName)
     {
-        try
+        // Сканирует файлы формата Excel с {путь}\piev_{набор цифр}, для избежания временных файлов
+        string[] filesDir = Directory.GetFiles(dirName, "piev_*.xlsx", SearchOption.TopDirectoryOnly);
+        string folder = dirName.Split(@"\")[^1];
+        string tt = Console.Title;
+
+        List<DataTable> list = new();
+
+        CConsole.Print($"\nСканирование директории: {dirName}");
+
+        using ExcelUse excelApp = new();
+        for (int i = 0; i < filesDir.Length; i++)
         {
-            // Сканирует файлы формата Excel с {путь}\piev_{набор цифр}, для избежания временных файлов
-            string[] filesDir = Directory.GetFiles(dirName, "piev_*.xlsx", SearchOption.TopDirectoryOnly);
-            string folder = dirName.Split(@"\")[^1];
-            string tt = Console.Title;
+            Console.Title = tt + $"Папка: {folder} | {CConsole.Progress(i, filesDir.Length, "Прогресс = ")}";
+            CConsole.Print($"\n[{i + 1}/{filesDir.Length}]");
 
-            List<DataTable> list = new();
-
-            CConsole.Print($"\nСканирование директории: {dirName}");
-
-            using ExcelUse excelApp = new();
-            for (int i = 0; i < filesDir.Length; i++)
+            DataTable dt = new();
+            int error_Count = 0;
+            do
             {
-                Console.Title = tt + $"Папка: {folder} | {CConsole.Progress(i, filesDir.Length, "Прогресс = ")}";
-                CConsole.Print($"\n[{i + 1}/{filesDir.Length}]");
-
-                DataTable dt = new();
-                int error_Count = 0;
-                do
+                CConsole.Print(filesDir[i], INFOConsole.All, ConsoleColor.Cyan);
+                dt = excelApp.ReadFile(filesDir[i]);
+                if (dt == null)
                 {
-                    CConsole.Print(filesDir[i], INFOConsole.All, ConsoleColor.Cyan);
-                    dt = excelApp.ReadFile(filesDir[i]);
-                    if (dt == null)
-                    {
-                        error_Count++;
-                        if (error_Count > errorReplayCount) continue;
-                        CConsole.Print($"Повторная попытка прочтения файла {error_Count}");
-                        Thread.Sleep(3000);
-                    }
-                } while (dt == null && error_Count <= errorReplayCount);
+                    error_Count++;
+                    if (error_Count > errorReplayCount) continue;
+                    CConsole.Print($"Повторная попытка прочтения файла {error_Count}");
+                    Thread.Sleep(3000);
+                }
+            } while (dt == null && error_Count <= errorReplayCount);
 
-                list.Add(dt);
-            }
-            Console.Title = title;
-
-            return list;
+            list.Add(dt);
         }
-        catch (Exception ex) { Console.WriteLine(ex.Message); return null; }
+        Console.Title = title;
+
+        return list;
     }
 
     /// <summary>
