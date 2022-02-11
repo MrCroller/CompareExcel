@@ -15,6 +15,10 @@ public class Program
     /// </summary>
     static private bool main_Dir = false;
     /// <summary>
+    /// Указывает начать ли с последнего скомпелированного файла
+    /// </summary>
+    static private bool last_Dir = true;
+    /// <summary>
     /// Директория вывода файлов
     /// </summary>
     static private string dirOut;
@@ -59,7 +63,7 @@ public class Program
             }
 
             int lastindex = 0; // индекс последнего скомпелированного файла
-            if (new DirectoryInfo(dirOut).GetFiles().Length > 0)
+            if (new DirectoryInfo(dirOut).GetFiles().Length > 0 && last_Dir)
             {
                 string lastFile = GetLastFile(dirOut);
                 lastindex = Array.IndexOf(dirArr, $@"{directory}\{lastFile.Remove(lastFile.Length - 13)}"); // Название файла без даты в конце
@@ -103,7 +107,7 @@ public class Program
             switch (args[i])
             {
                 case "-help":
-                    Console.WriteLine("-----Commands-----\n-help (показать команды)\n-d (Папка для чтения)\n-n (Учитывать вложенные папки): true - учитывать, false - не учитывать [по умолчанию]\n-o (Папка для вывода объединенного файла)\n-i (Уровень информирования, выбор из 3 доступных: None - Без консольного вывода, Main - главные процессы [по умолчанию], All - Полный вывод, аж на каждую ячеечку. Много букав!)\nДля оболочки PowerShell оборачивайте путь в ковычки 'directory'\n------------------");
+                    Console.WriteLine("-----Commands-----\n-help (показать команды)\n-d (Папка для чтения)\n-n (Учитывать вложенные папки): true - учитывать, false - не учитывать [по умолчанию]\n-o (Папка для вывода объединенного файла)\n-c (Ищет в директории выхода последний скомпелированный файл и начинает с него): true - начинать с последнего [по умолчанию], false - начинать с первой папки\n-i (Уровень информирования, выбор из 3 доступных: None - Без консольного вывода, Main - главные процессы [по умолчанию], All - Полный вывод, аж на каждую ячеечку. Много букав!)\nДля оболочки PowerShell оборачивайте путь в ковычки 'directory'\n------------------");
                     break;
                 case "-d": // Папка для чтения
                     if (Directory.Exists(args[i + 1]))
@@ -112,7 +116,7 @@ public class Program
                     }
                     else
                     {
-                        Console.WriteLine("Не задана папка для чтения или ее не существует");
+                        throw new Exception("Не задана папка для чтения или ее не существует");
                     }
                     break;
                 case "-n": // Учитывать ли вложенные папки?
@@ -126,7 +130,7 @@ public class Program
                     }
                     else
                     {
-                        Console.WriteLine("Нераспознан параметр вложенных папок -d");
+                        CConsole.Print("Нераспознан параметр вложенных папок -d. Вывод по умолчанию: false", col: ConsoleColor.Red);
                     }
                     break;
                 case "-o": // Директория выхода
@@ -136,7 +140,21 @@ public class Program
                     }
                     else
                     {
-                        Console.WriteLine("Не задана папка для вывода или ее не существует");
+                        throw new Exception("Не задана папка для вывода или ее не существует");
+                    }
+                    break;
+                case "-c": // Начинать ли с последнего скомпелированного файла?
+                    if (args[i + 1].ToLower() == "true")
+                    {
+                        last_Dir = true;
+                    }
+                    else if (args[i + 1].ToLower() == "false")
+                    {
+                        last_Dir = false;
+                    }
+                    else
+                    {
+                        CConsole.Print("Нераспознан параметр последнего файла. Вывод по умолчанию: true", col: ConsoleColor.Red);
                     }
                     break;
                 case "-i": // Уровень информирования
@@ -169,7 +187,8 @@ public class Program
     {
         try
         {
-            string[] filesDir = Directory.GetFiles(dirName, "*.xlsx", SearchOption.TopDirectoryOnly); // Сканирует файлы формата Excel
+            // Сканирует файлы формата Excel с {путь}\piev_{набор цифр}, для избежания временных файлов
+            string[] filesDir = Directory.GetFiles(dirName, "piev_*.xlsx", SearchOption.TopDirectoryOnly);
             string folder = dirName.Split(@"\")[^1];
             string tt = Console.Title;
 
@@ -187,12 +206,13 @@ public class Program
                 int error_Count = 0;
                 do
                 {
+                    CConsole.Print(filesDir[i], INFOConsole.All, ConsoleColor.Cyan);
                     dt = excelApp.ReadFile(filesDir[i]);
                     if (dt == null)
                     {
                         error_Count++;
                         if (error_Count > errorReplayCount) continue;
-                        CConsole.Print($"Повторная попытка {error_Count}");
+                        CConsole.Print($"Повторная попытка прочтения файла {error_Count}");
                         Thread.Sleep(3000);
                     }
                 } while (dt == null && error_Count <= errorReplayCount);
@@ -215,10 +235,11 @@ public class Program
     {
         CConsole.WriteLine();
         Dictionary<DateMY, DataTable> dictDT = new();
+        string strsort = "Сортировка DataTable по датам: ";
+
+        CConsole.Print(strsort, col: ConsoleColor.Red, newLine: false);
         for (int i = 0; i < allDT.Count; i++)
         {
-            string strsort = "Сортировка DataTable по датам: ";
-            CConsole.Print(strsort, col: ConsoleColor.Red, newLine: false);
             CConsole.SetLine(CConsole.Progress(i, allDT.Count, spiner: true), horiaontal: strsort.Length);
 
             string my_str = allDT[i].Rows[0]["ns1:DocDate"].ToString(); // Колонка с датой документа
@@ -267,6 +288,8 @@ public class Program
 
     #endregion
 
+    #region Получение имен файлов
+
     /// <summary>
     /// Возвращает имя последнего созданного файла в директории
     /// </summary>
@@ -309,5 +332,17 @@ public class Program
         string mounthSTR = mounth < 10 ? "0" + mounth.ToString() : mounth.ToString();
         // Если путь с названием файла, то берется вторая подстрочка с конца (имя папки)
         return $@"{DirFolder.Split(@"\")[^(DirFolder.EndsWith(".xlsx") ? 2 : 1)]}_{mounthSTR}_{year}";
+    }
+    #endregion
+
+    /// <summary>
+    /// Остановка программы при ошибке
+    /// </summary>
+    /// <param name="er">Текст сообщения ошибки</param>
+    private static void ErrorExit(string er)
+    {
+        CConsole.Print(er, INFOConsole.None, ConsoleColor.Red);
+        CConsole.Await();
+        Process.GetCurrentProcess().Kill();
     }
 }

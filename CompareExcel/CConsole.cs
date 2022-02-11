@@ -77,6 +77,7 @@ public static class CConsole
             Console.Write("#");
         Console.WriteLine();
     }
+
     /// <summary>
     /// Разделитель информации в строке
     /// </summary>
@@ -111,12 +112,36 @@ public static class CConsole
     /// <param name="maxCount">Максимальное кол-во элементов</param>
     /// <param name="str">Строка 1</param>
     /// <param name="str2">Строка 2</param>
+    /// <param name="spiner">Отображать спинер?</param>
     /// <returns></returns>
     public static string Progress(int index, int maxCount, string str = "", string str2 = "", bool spiner = false)
     {
         return $"{str}{Math.Round((double)((index + 1) * 100 / maxCount))}% " +
             $"{str2}[{index + 1} / {maxCount}]" +
-            $"{((spiner && index != maxCount) ? " " + GetSpiner() : "")}";
+            $"{((spiner && index < maxCount - 1) ? " " + GetSpiner() : "  ")}";
+    }
+
+    /// <summary>
+    /// Возвращает строку прогресса в виде визуальной полосы
+    /// </summary>
+    /// <param name="index">Текущий индекс цикла</param>
+    /// <param name="maxCount">Максимальное кол-во</param>
+    /// <param name="str">Строка до</param>
+    /// <param name="lenght">Длина визуальной полосы</param>
+    /// <returns></returns>
+    public static string ProgressBar(int index, int maxCount, string str = "", int lenght = 20, bool spiner = false)
+    {
+        string sout = $"{str}|";
+        double percent = Math.Round((double)((index + 1) * 100 / maxCount));
+
+        for (int i = 0; i < Math.Round(lenght * (percent) / 100, MidpointRounding.ToZero); i++) sout += "█";
+        if(percent != 100) sout += (percent % 10 >= 5) ? "▌" : " "; // Если процентов >=x5
+        for (int i = sout.Length - 1; i < str.Length + lenght; i++) sout += " ";
+
+        sout += $"| {percent}% ";
+        sout += $"[{index + 1} / {maxCount}]";
+        sout += $"{((spiner && index < maxCount - 1) ? " " + GetSpiner() : "  ")}";
+        return sout;
     }
 
     /// <summary>

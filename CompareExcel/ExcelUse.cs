@@ -91,10 +91,12 @@ class ExcelUse : IDisposable
                     CConsole.Print($"[{i - 1},{j}]Text: {cell}", strInfo: INFOConsole.All);
                     listRow.Add(cell); // Заполнение листа строки
                 }
+                CConsole.SetLine(CConsole.ProgressBar(i - 1, rowsCount, "Прогресс чтения: ", spiner: true));
                 DT.Rows.Add(listRow.ToArray()); // Добавление новой строки в DT
                 CConsole.WriteLine(INFOConsole.All);
             }
             CConsole.Separator(strInfo: INFOConsole.All);
+            CConsole.WriteLine(INFOConsole.Main);
             CConsole.Print("FINISH READ", col: ConsoleColor.Green);
 
             return DT;
@@ -136,7 +138,8 @@ class ExcelUse : IDisposable
             int maxRows = DT.Rows.Count;
             for (int i = 0; i < maxRows; i++)
             {
-                CConsole.SetLine(CConsole.Progress(i, maxRows, "Прогресс конвертации: ", "rows: ", true));
+                //CConsole.SetLine(CConsole.Progress(i, maxRows, "Прогресс конвертации: ", "rows: ", true));
+                CConsole.SetLine(CConsole.ProgressBar(i, maxRows, "Прогресс конвертации: ", spiner: true));
                 CConsole.Print($"new row [{i}]\n", strInfo: INFOConsole.All);
 
                 for (int j = 0; j < DT.Columns.Count; j++)
@@ -195,10 +198,10 @@ class ExcelUse : IDisposable
         CConsole.Print("Dispose. Очистка процессов", col: ConsoleColor.Yellow);
 
         app.Quit();
-        while(Marshal.ReleaseComObject(app) != 0) { }
+        //while(Marshal.ReleaseComObject(app) != 0) { }
         app = null;
         GC.Collect();
-        GC.WaitForPendingFinalizers();
+        //GC.WaitForPendingFinalizers();
     }
 
     /// <summary>
